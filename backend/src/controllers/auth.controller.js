@@ -1,19 +1,18 @@
 const userModel = require("../models/user.model");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const blacklistModel = require("../models/blacklist.model");
 const redis = require("../config/cache");
 
 async function registerUser(req, res) {
   const { username, email, password } = req.body;
 
-  const isAlreadyExists = await userModel.findOne({
+  const isUserAlreadyExists = await userModel.findOne({
     $or: [{ username }, { email }],
   });
 
-  if (isAlreadyExists) {
-    return res.status(400).json({
-      message: "User with same username or email already exists",
+  if (isUserAlreadyExists) {
+    return res.status(409).json({
+      message: "User already exists",
     });
   }
 
@@ -25,15 +24,9 @@ async function registerUser(req, res) {
     password: hash,
   });
 
-  const token = jwt.sign(
-    {
-      id: user._id,
-    },
-    process.env.JWT_SECRET,
-    {
-      expiresIn: "3d",
-    },
-  );
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "3d",
+  });
 
   res.cookie("token", token);
 
@@ -61,7 +54,12 @@ async function loginUser(req, res) {
     });
   }
 
-  const isPasswordValid = bcrypt.compare(password, user.password);
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+    expiresIn: "3d",
+  });
+  res.cookie("token",token);
 
   if (!isPasswordValid) {
     return res.status(400).json({
@@ -69,28 +67,22 @@ async function loginUser(req, res) {
     });
   }
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: "3d",
-  });
-
-  res.cookie("token", token);
-
   res.status(200).json({
     message: "User logged in successfully",
     user: {
-      user: user.username,
+      username: user.username,
       email: user.email,
     },
   });
 }
 
 async function getMe(req, res) {
-  const userId = req.user;
+  const userId = req.user.id;
 
   const user = await userModel.findById(userId);
 
   res.status(200).json({
-    message: "User fetched successfully",
+    message: "user fetched successfully",
     user,
   });
 }
@@ -98,12 +90,12 @@ async function getMe(req, res) {
 async function logoutUser(req, res) {
   const token = req.cookies.token;
 
-  res.clearCookie("token");
+  res.clearCookie("token", token);
 
   await redis.set(token, Date.now().toString());
 
   res.status(200).json({
-    message: "Logout successfully",
+    message: "logout successfully",
   });
 }
 

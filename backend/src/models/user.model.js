@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema({
   username: {
     type: String,
     required: [true, "Username is required"],
-    unique: [true, "username already exists"],
+    unique: [true, "Username is already exits"],
   },
   email: {
     type: String,
@@ -13,11 +13,11 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, "Password is required"],
-    select:false
+    required: [true, "password is required"],
+    select: false,
   },
 });
 
-const userModel = mongoose.model("users",userSchema)
+const userModel = mongoose.model("users", userSchema);
 
-module.exports = userModel
+module.exports = userModel;
